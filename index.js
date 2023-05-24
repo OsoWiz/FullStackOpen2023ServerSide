@@ -1,4 +1,6 @@
+require("dotenv").config();
 const express = require("express");
+const Pnumber = require("./models/number");
 const app = express();
 const cors = require("cors");
 var morgan = require("morgan");
@@ -30,52 +32,24 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-let numbers = [
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
-
 app.get("/api/persons/", (req, res) => {
-  res.json(numbers);
+  Pnumber.find({}).then((result) => {
+    res.json(result);
+  });
 });
 
-app.get("/info", (req, res) => {
-  res.send(
-    `<p> Phonebook has info for ${
-      numbers.length
-    } people </p><p>${new Date()}</p>`
-  );
-});
+// app.get("/info", (req, res) => {
+//   res.send(
+//     `<p> Phonebook has info for ${
+//       numbers.length
+//     } people </p><p>${new Date()}</p>`
+//   );
+// });
 
 app.get("/api/persons/:id", (req, res) => {
-  // get id
-  const id = Number(req.params.id);
-  // find person
-  const person = numbers.find((person) => person.id === id);
-  // profit
-  if (person) {
-    res.json(person);
-  } else {
-    res.status(404).end();
-  }
+  Pnumber.findById(req.params.id).then((result) => {
+    res.json(result);
+  });
 });
 
 // updation. Is that even a word?
@@ -96,13 +70,14 @@ app.put("/api/persons/:id", (req, res) => {
 app.delete("/api/persons/:id", (req, res) => {
   // get id
   const id = Number(req.params.id);
-  // find person
-  const person = numbers.find((person) => person.id === id);
-  // inverse profit
-  if (person) {
-    numbers.splice(numbers.indexOf(person), 1);
-    res.status(204).end();
-  }
+  Pnumber.findByIdAndRemove(id)
+    .then((result) => {
+      res.status(204).end();
+    })
+    .catch((error) => {
+      console.log(`Deletion failed: ${error}`);
+      res.status(400).end();
+    });
 });
 
 app.post("/api/persons", (req, res) => {
@@ -113,19 +88,15 @@ app.post("/api/persons", (req, res) => {
       error: "Name or number missing",
     });
   }
-  if (numbers.find((person) => person.name === body.name)) {
-    return res.status(400).json({
-      error: "Name must be unique to a person",
-    });
-  }
 
-  const person = {
-    id: Math.floor(Math.random() * 1000000),
+  const person = new Pnumber({
     name: body.name,
     number: body.number,
-  };
-  numbers = numbers.concat(person);
-  res.json(person);
+  });
+
+  person.save().then((savedPerson) => {
+    res.json(savedPerson);
+  });
 });
 
 app.listen(port, () => {
