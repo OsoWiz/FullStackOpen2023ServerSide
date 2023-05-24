@@ -1,7 +1,27 @@
 const express = require("express");
 const app = express();
+var morgan = require("morgan");
 const port = 3001;
 app.use(express.json());
+
+const morganPlus = morgan(function (tokens, req, res) {
+  let data = [];
+  if (req.method === "POST") {
+    data = data.concat(JSON.stringify(req.body));
+  }
+  return [
+    tokens.method(req, res),
+    tokens.url(req, res),
+    tokens.status(req, res),
+    tokens.res(req, res, "content-length"),
+    "-",
+    tokens["response-time"](req, res),
+    "ms",
+    data,
+  ].join(" ");
+});
+
+app.use(morganPlus);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -69,7 +89,7 @@ app.delete("/api/persons/:id", (req, res) => {
 
 app.post("/api/persons", (req, res) => {
   const body = req.body;
-  console.log(body);
+  // console.log(body);
   if (!body || !body.name || !body.number) {
     return res.status(400).json({
       error: "Name or number missing",
