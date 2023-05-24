@@ -1,8 +1,11 @@
 const express = require("express");
 const app = express();
+const cors = require("cors");
 var morgan = require("morgan");
-const port = 3001;
+const port = process.env.PORT || 3001;
+app.use(cors());
 app.use(express.json());
+app.use(express.static("build"));
 
 const morganPlus = morgan(function (tokens, req, res) {
   let data = [];
@@ -69,6 +72,21 @@ app.get("/api/persons/:id", (req, res) => {
   const person = numbers.find((person) => person.id === id);
   // profit
   if (person) {
+    res.json(person);
+  } else {
+    res.status(404).end();
+  }
+});
+
+// updation. Is that even a word?
+app.put("/api/persons/:id", (req, res) => {
+  // get id
+  const id = Number(req.params.id);
+  // find person
+  const person = numbers.find((person) => person.id === id);
+  // profit
+  if (person) {
+    person.number = req.body.number;
     res.json(person);
   } else {
     res.status(404).end();
