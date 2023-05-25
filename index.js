@@ -26,67 +26,88 @@ const morganPlus = morgan(function (tokens, req, res) {
   ].join(" ");
 });
 
+const errorHandler = (error, req, res, next) => {
+  console.log(error.message);
+  if (error.name === "CastError") {
+    return res.status(400).send({ error: "malformatted id" });
+  }
+  next(error);
+};
+
+const unknownEndpoint = (req, res) => {
+  res.status(404).send({ error: "unknown endpoint" });
+};
+
 app.use(morganPlus);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.get("/api/persons/", (req, res) => {
-  Pnumber.find({}).then((result) => {
-    res.json(result);
-  });
+app.get("/api/persons/", (req, res, next) => {
+  Pnumber.find({})
+    .then((result) => {
+      res.json(result);
+    })
+    .catch((error) => {
+      next(error);
+    });
 });
 
-// app.get("/info", (req, res) => {
-//   res.send(
-//     `<p> Phonebook has info for ${
-//       numbers.length
-//     } people </p><p>${new Date()}</p>`
-//   );
-// });
+app.get("/info", (req, res, next) => {
+  Pnumber.countDocuments({})
+    .then((result) => {
+      res.send(
+        `<p>Phonebook has info for ${result} people</p><p>${new Date()}</p>`
+      );
+    })
+    .catch((error) => {
+      next(error);
+    });
+});
 
-app.get("/api/persons/:id", (req, res) => {
-  Pnumber.findById(req.params.id).then((result) => {
-    res.json(result);
-  });
+app.get("/api/persons/:id", (req, res, next) => {
+  Pnumber.findById(req.params.id)
+    .then((result) => {
+      res.json(result);
+    })
+    .catch((error) => {
+      next(error);
+    });
 });
 
 // updation. Is that even a word?
-app.put("/api/persons/:id", (req, res) => {
-  // get id
-  const id = Number(req.params.id);
-  // find person
-  const person = numbers.find((person) => person.id === id);
-  // profit
-  if (person) {
-    person.number = req.body.number;
-    res.json(person);
-  } else {
-    res.status(404).end();
-  }
+app.put("/api/persons/:id", (req, res, next) => {
+  const body = req.body;
+  const pnumber = {
+    name: body.name,
+    number: body.number,
+  };
+  Pnumber.findByIdAndUpdate(req.params.id, pnumber, { new: true })
+    .then((updatedPerson) => {
+      res.json(updatedPerson);
+    })
+    .catch((error) => {
+      next(error);
+    });
 });
 
-app.delete("/api/persons/:id", (req, res) => {
+app.delete("/api/persons/:id", (req, res, next) => {
   // get id
-  const id = Number(req.params.id);
-  Pnumber.findByIdAndRemove(id)
+  Pnumber.findByIdAndRemove(req.params.id)
     .then((result) => {
       res.status(204).end();
     })
     .catch((error) => {
-      console.log(`Deletion failed: ${error}`);
-      res.status(400).end();
+      next(error);
     });
 });
 
-app.post("/api/persons", (req, res) => {
+app.post("/api/persons", (req, res, next) => {
   const body = req.body;
   // console.log(body);
   if (!body || !body.name || !body.number) {
-    return res.status(400).json({
-      error: "Name or number missing",
-    });
+    next(error);
   }
 
   const person = new Pnumber({
@@ -98,6 +119,10 @@ app.post("/api/persons", (req, res) => {
     res.json(savedPerson);
   });
 });
+
+// unkown endpoint and errorhandler must be the last middleware
+app.use(unknownEndpoint);
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
