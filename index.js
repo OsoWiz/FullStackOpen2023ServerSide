@@ -30,7 +30,12 @@ const errorHandler = (error, req, res, next) => {
   console.log(error.message);
   if (error.name === "CastError") {
     return res.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return res
+      .status(400)
+      .send({ error: `Validation error: ${error.message}` });
   }
+
   next(error);
 };
 
@@ -83,7 +88,11 @@ app.put("/api/persons/:id", (req, res, next) => {
     name: body.name,
     number: body.number,
   };
-  Pnumber.findByIdAndUpdate(req.params.id, pnumber, { new: true })
+  Pnumber.findByIdAndUpdate(req.params.id, pnumber, {
+    new: true,
+    runValidators: true,
+    context: "query",
+  })
     .then((updatedPerson) => {
       res.json(updatedPerson);
     })
@@ -115,9 +124,14 @@ app.post("/api/persons", (req, res, next) => {
     number: body.number,
   });
 
-  person.save().then((savedPerson) => {
-    res.json(savedPerson);
-  });
+  person
+    .save()
+    .then((savedPerson) => {
+      res.json(savedPerson);
+    })
+    .catch((error) => {
+      next(error);
+    });
 });
 
 // unkown endpoint and errorhandler must be the last middleware
